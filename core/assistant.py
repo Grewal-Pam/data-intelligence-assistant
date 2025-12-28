@@ -4,8 +4,12 @@ from core.nl_intent_mapper import map_nl_to_intent
 from genai.llm_intent_helper import LLMIntentHelper
 from core.nl_intent_mapper import map_nl_to_intent
 
+from genai.explainer import ResultExplainer
+
 
 llm = LLMIntentHelper()
+explainer = ResultExplainer()
+
 
 def ask(question: str):
     try:
@@ -29,11 +33,12 @@ def ask(question: str):
                 "rows": 0,
                 "message": "No matching data found."
             }
-
+        explanation = explainer.explain(question, df)
         return {
             "status": "ok",
             "intent": intent,
             "rows": len(df),
+            "explanation": explanation,
             "data": df
         }
 
