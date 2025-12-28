@@ -1,0 +1,5 @@
+participant_id,visit_date,systolic_bp,diastolic_bp,height_cm,weight_kg
+P001,2025-12-01,118,76,164,53
+P002,2025-12-01,140,92,176,88
+P003,2025-12-03,110,70,160,52
+P001,2026-06-01,121,80,164,54
