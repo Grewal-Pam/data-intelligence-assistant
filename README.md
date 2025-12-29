@@ -128,7 +128,7 @@ The system uses SQLite with four main tables:
 
 ## 🤖 Groq AI Integration
 
-The assistant leverages Groq's fast inference platform for two key capabilities:
+The assistant leverages Groq's fast inference platform for three key capabilities:
 
 ### Intent Recognition (`genai/llm_intent_helper.py`)
 - **Primary**: Rule-based deterministic mapping for speed and reliability
@@ -140,7 +140,12 @@ The assistant leverages Groq's fast inference platform for two key capabilities:
 - **Purpose**: Generate clear, cautious explanations of query results
 - **Features**: Avoids speculation, handles missing data explicitly, provides medical context
 
-Both components require `GROQ_API_KEY` environment variable to be set.
+### RAG Context Synthesis (`genai/context_synthesizer.py`)
+- **Model**: Groq Llama 3.1 8B Instant
+- **Purpose**: Generate grounded answers from retrieved documentation context
+- **Features**: Prevents hallucination by only using provided context, includes source citations
+
+All Groq components require `GROQ_API_KEY` environment variable to be set.
 
 ## 🔄 Code Flow
 
@@ -189,6 +194,108 @@ explanation = explainer.explain(question, df)  # Groq generates explanation
 - If parameters are missing → Returns `{"status": "needs_clarification", "required": ["participant_id"]}`
 - If query fails → Returns `{"status": "error", "message": "error details"}`
 
+## 🔍 RAG Documentation Assistant
+
+The system includes a Retrieval-Augmented Generation (RAG) component that enables researchers to ask contextual questions about the study methodology, data definitions, and research concepts. This complements the structured query system by providing "ask the documentation" capabilities.
+
+### RAG Architecture
+
+```
+docs/                           # Source documentation
+├── glossary.md                 # Study terminology
+├── metrics.md                  # Data definitions
+├── data_model.md              # Entity relationships
+└── study_context.md           # Research background
+
+rag/                           # Vector database layer
+├── build_index.py             # ChromaDB indexing with SentenceTransformers
+└── retriever.py               # Semantic search with similarity scoring
+
+genai/                         # LLM synthesis layer
+├── context_synthesizer.py     # Groq-powered answer generation
+└── context_answer.py          # Retrieval → synthesis orchestration
+
+core/                          # Integration layer
+├── context_cli.py             # Standalone RAG CLI
+└── router.py                  # Routes questions to appropriate system
+```
+
+### RAG Setup
+
+1. **Install vector database dependencies**:
+   ```bash
+   pip install chromadb sentence-transformers
+   ```
+
+2. **Index documentation**:
+   ```bash
+   python rag/build_index.py
+   ```
+   This creates a ChromaDB vector database in `data/chroma_db/` with embedded chunks from all markdown files.
+
+3. **Test RAG system**:
+   ```bash
+   python -m core.context_cli
+   ```
+
+### RAG Examples
+
+Real terminal output from the RAG system:
+
+```
+📚 Context Assistant (type 'exit')
+
+You: what is BMI change?
+
+Assistant:
+{
+  'status': 'ok',
+  'question': 'what is BMI change?',
+  'answer': 'A negative value indicates weight loss, while a positive value indicates weight gain.',
+  'citations': ['metrics.md#chunk1', 'glossary.md#chunk9']
+}
+--------------------------------------------------
+
+You: what is cohort study?
+
+Assistant:
+{
+  'status': 'ok',
+  'question': 'what is cohort study?',
+  'answer': 'A cohort study is a research method that tracks characteristics (such as age or location) and outcomes over time.',
+  'citations': ['glossary.md#chunk3']
+}
+--------------------------------------------------
+
+You: How is cohort study helpful?
+
+Assistant:
+{
+  'status': 'ok',
+  'question': 'How is cohort study helpful?',
+  'answer': 'Cohort studies are helpful in identifying risk factors and causes of diseases by tracking outcomes over time among individuals with similar characteristics.',
+  'citations': ['glossary.md#chunk3']
+}
+--------------------------------------------------
+```
+
+### RAG Features
+
+✅ **Grounded Answers**: LLM responses based only on retrieved documentation (no hallucination)  
+✅ **Source Citations**: Every answer includes specific document and chunk references  
+✅ **Semantic Search**: Uses SentenceTransformer embeddings for meaning-based retrieval  
+✅ **Flexible Thresholds**: Lower similarity requirements for glossary and metrics content  
+✅ **Anti-Hallucination**: Explicitly instructs LLM to only use provided context  
+
+### RAG vs Structured Queries
+
+| Aspect | Structured Queries | RAG Documentation |
+|--------|-------------------|-------------------|
+| **Purpose** | Extract data from database | Explain concepts and methodology |
+| **Input** | "BMI change for participant p002" | "What is BMI change?" |
+| **Output** | Tabular data + explanation | Contextual explanation + citations |
+| **Example** | BMI: 28.4 → 20.1 (-8.3) | "A negative value indicates weight loss" |
+
 ## 📈 Quality Control
 
 Built-in QC queries available in `queries/qc/`:
@@ -203,7 +310,19 @@ Built-in QC queries available in `queries/qc/`:
 - **Safe Longitudinal Analysis**: Prevents accidental time-based errors
 - **Reproducible Results**: All analyses fully reproducible from source data
 
-## 📚 Documentation
+## �️ Safety & Design Constraints
+
+This system is intentionally designed to prevent common GenAI failure modes:
+
+- **LLMs never generate SQL**: No direct database access or dynamic query generation
+- **Deterministic Analytics**: All analytical results come from predefined, audited SQL queries
+- **LLM Scope Limitation**: AI is only used for intent classification and result explanation
+- **Grounded RAG**: Answers are strictly limited to indexed documentation (no hallucination)
+- **No Training Data Modification**: System doesn't learn from or modify training data during operation
+
+This architecture makes the system suitable for **research and regulated environments** where data integrity and auditability are critical.
+
+## �📚 Documentation
 
 - [`docs/data_model.md`](docs/data_model.md) - Detailed data model documentation
 - [`queries/readme.md`](queries/readme.md) - Query documentation
