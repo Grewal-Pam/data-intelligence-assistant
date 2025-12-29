@@ -310,7 +310,19 @@ Built-in QC queries available in `queries/qc/`:
 - **Safe Longitudinal Analysis**: Prevents accidental time-based errors
 - **Reproducible Results**: All analyses fully reproducible from source data
 
-## 📚 Documentation
+## �️ Safety & Design Constraints
+
+This system is intentionally designed to prevent common GenAI failure modes:
+
+- **LLMs never generate SQL**: No direct database access or dynamic query generation
+- **Deterministic Analytics**: All analytical results come from predefined, audited SQL queries
+- **LLM Scope Limitation**: AI is only used for intent classification and result explanation
+- **Grounded RAG**: Answers are strictly limited to indexed documentation (no hallucination)
+- **No Training Data Modification**: System doesn't learn from or modify training data during operation
+
+This architecture makes the system suitable for **research and regulated environments** where data integrity and auditability are critical.
+
+## �📚 Documentation
 
 - [`docs/data_model.md`](docs/data_model.md) - Detailed data model documentation
 - [`queries/readme.md`](queries/readme.md) - Query documentation
